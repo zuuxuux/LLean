@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = "~=3.12"
 dependencies = [
     "lean-interact>=0.8.2",
+    "python-dotenv>=1.1.1",
 ]
 
 [dependency-groups]

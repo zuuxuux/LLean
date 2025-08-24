@@ -1,12 +1,11 @@
-from lean_interact import Command, LeanREPLConfig, LeanServer, ProofStep
+from lean_interact import ProofStep
 
-from llean.utils import pprint
+from llean.utils import get_problem_server, pprint
 
-config = LeanREPLConfig(verbose=True)  # download and build Lean REPL
-server = LeanServer(config)  # start Lean REPL
-output = server.run(
-    Command(cmd="theorem ex (x q : Nat) : 37 * x + q = 37 * x + q  := sorry")
-)
-pprint(output)
+level = "Tutorial.L01rfl"
+problem = "(x q : ℕ) : 37 * x + q = 37 * x + q"
+
+server = get_problem_server(problem, level, verbose=True)
+
 output = server.run(ProofStep(tactic="rfl", proofState=0))
 pprint(output)

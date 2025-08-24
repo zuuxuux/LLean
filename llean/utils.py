@@ -1,7 +1,41 @@
+import os
 from functools import singledispatch
 from typing import Any
 
+from dotenv import load_dotenv
+from lean_interact import Command, LeanREPLConfig, LeanServer, LocalProject
 from lean_interact.interface import CommandResponse, LeanError, ProofStepResponse
+
+if not load_dotenv():
+    print("No .env file found")
+if "NNG_PATH" not in os.environ:
+    raise EnvironmentError("NNG_PATH not set in environment variables")
+
+
+def get_problem_server(theorem: str, level: str, *, verbose=False) -> LeanServer:
+    code = f"""
+import Game.Levels.{level}
+
+theorem ex {theorem}  := by
+    sorry
+"""
+    config = get_nng_config()
+    server = LeanServer(config)  # start Lean REPL
+    output = server.run(Command(cmd=code))
+    if verbose:
+        pprint(output)
+    return server
+
+
+def get_nng_config() -> LeanREPLConfig:
+    nng_path = os.environ["NNG_PATH"]
+    if not os.path.isdir(nng_path):
+        raise NotADirectoryError(f"NNG_PATH '{nng_path}' is not a valid directory")
+    nng_project = LocalProject(directory=nng_path)
+    return LeanREPLConfig(
+        project=nng_project,
+        verbose=True,  # download and build Lean REPL
+    )
 
 
 @singledispatch

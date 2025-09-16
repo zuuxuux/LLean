@@ -1,5 +1,7 @@
 import os
 import re
+import sys
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import singledispatch
 from pathlib import Path
@@ -13,6 +15,28 @@ if not load_dotenv():
     print("No .env file found")
 if "NNG_PATH" not in os.environ:
     raise EnvironmentError("NNG_PATH not set in environment variables")
+
+
+@contextmanager
+def _suppress_output(enabled: bool):
+    if not enabled:
+        yield
+        return
+
+    sys.stdout.flush()
+    sys.stderr.flush()
+    with open(os.devnull, "w") as devnull:
+        stdout_fd = os.dup(1)
+        stderr_fd = os.dup(2)
+        try:
+            os.dup2(devnull.fileno(), 1)
+            os.dup2(devnull.fileno(), 2)
+            yield
+        finally:
+            os.dup2(stdout_fd, 1)
+            os.dup2(stderr_fd, 2)
+            os.close(stdout_fd)
+            os.close(stderr_fd)
 
 
 def _summarize_docstring(doc: str) -> str:
@@ -168,9 +192,10 @@ def get_problem_server_from_file(
         ]
     )
 
-    config = get_nng_config()
-    server = LeanServer(config)
-    output = server.run(Command(cmd="\n".join(code_lines)))
+    config = get_nng_config(verbose=verbose)
+    with _suppress_output(not verbose):
+        server = LeanServer(config)
+        output = server.run(Command(cmd="\n".join(code_lines)))
     if verbose:
         pprint(output)
     return server
@@ -183,22 +208,24 @@ import Game.Levels.{level}
 theorem ex {theorem}  := by
     sorry
 """
-    config = get_nng_config()
-    server = LeanServer(config)  # start Lean REPL
-    output = server.run(Command(cmd=code))
+    config = get_nng_config(verbose=verbose)
+    with _suppress_output(not verbose):
+        server = LeanServer(config)  # start Lean REPL
+        output = server.run(Command(cmd=code))
     if verbose:
         pprint(output)
     return server
 
 
-def get_nng_config() -> LeanREPLConfig:
+def get_nng_config(*, verbose: bool = False) -> LeanREPLConfig:
     nng_path = os.environ["NNG_PATH"]
     if not os.path.isdir(nng_path):
         raise NotADirectoryError(f"NNG_PATH '{nng_path}' is not a valid directory")
-    nng_project = LocalProject(directory=nng_path)
+    with _suppress_output(not verbose):
+        nng_project = LocalProject(directory=nng_path)
     return LeanREPLConfig(
         project=nng_project,
-        verbose=True,  # download and build Lean REPL
+        verbose=verbose,
     )
 
 

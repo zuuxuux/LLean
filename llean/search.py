@@ -2,13 +2,59 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 from lean_interact import ProofStep
 from lean_interact.interface import LeanError
 
 from .levels import load_level_from_file
+
+
+@dataclass
+class SearchNode:
+    state_id: str
+    goals: List[str]
+    depth: int
+    tactics_tried: list[str] = field(default_factory=list)
+    successes: list[tuple[str, str]] = field(default_factory=list)
+    failures: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SearchGraph:
+    nodes: dict[str, SearchNode] = field(default_factory=dict)
+    solutions: list[list[str]] = field(default_factory=list)
+    root: str | None = None
+
+    def record_node(self, state_id: str, goals: Iterable[str], depth: int) -> SearchNode:
+        goals_list = list(goals)
+        node = self.nodes.get(state_id)
+        if node is None:
+            node = SearchNode(state_id=state_id, goals=goals_list, depth=depth)
+            self.nodes[state_id] = node
+            if depth == 0 and self.root is None:
+                self.root = state_id
+        else:
+            node.goals = goals_list
+            node.depth = min(node.depth, depth)
+        return node
+
+    def record_attempt(
+        self,
+        state_id: str,
+        tactic: str,
+        *,
+        success: bool,
+        new_state: str | None = None,
+    ) -> None:
+        node = self.nodes.setdefault(state_id, SearchNode(state_id=state_id, goals=[], depth=0))
+        node.tactics_tried.append(tactic)
+        if success and new_state is not None:
+            node.successes.append((tactic, new_state))
+        elif not success:
+            node.failures.append(tactic)
 
 def _parse_goal(goal: str) -> tuple[list[str], list[str]]:
     """Return equality hypotheses and possible induction targets."""
@@ -67,7 +113,12 @@ def generate_tactic_candidates(goal: str, available_tactics: Iterable[str]) -> l
     return candidates
 
 
-def depth_first_search(level_path: Path, *, max_depth: int = 6) -> list[list[str]]:
+def depth_first_search(
+    level_path: Path,
+    *,
+    max_depth: int = 6,
+    trace: SearchGraph | None = None,
+) -> list[list[str]]:
     """Perform a depth-first search exploring tactic sequences up to ``max_depth``."""
 
     level_path = level_path.resolve()
@@ -81,6 +132,8 @@ def depth_first_search(level_path: Path, *, max_depth: int = 6) -> list[list[str
 
         root_state = str(root.proof_state)
         state_goals: dict[str, list[str]] = {root_state: root.goals or []}
+        if trace is not None:
+            trace.record_node(root_state, state_goals[root_state], 0)
 
         solutions: list[list[str]] = []
         stack: list[tuple[str, list[str]]] = [(root_state, [])]
@@ -95,6 +148,8 @@ def depth_first_search(level_path: Path, *, max_depth: int = 6) -> list[list[str
             goals = state_goals.get(state_id, [])
             if not goals:
                 solutions.append(sequence)
+                if trace is not None:
+                    trace.solutions.append(sequence)
                 continue
 
             goal_str = goals[0]
@@ -111,10 +166,15 @@ def depth_first_search(level_path: Path, *, max_depth: int = 6) -> list[list[str
 
                 response = context.server.run(ProofStep(tactic=tactic, proofState=state_id))
                 if isinstance(response, LeanError) or response.has_errors():
+                    if trace is not None:
+                        trace.record_attempt(state_id, tactic, success=False)
                     continue
 
                 new_state = str(response.proof_state)
                 state_goals[new_state] = response.goals or []
+                if trace is not None:
+                    trace.record_attempt(state_id, tactic, success=True, new_state=new_state)
+                    trace.record_node(new_state, state_goals[new_state], len(sequence) + 1)
                 stack.append((new_state, sequence + [tactic]))
 
         return solutions
@@ -125,4 +185,6 @@ def depth_first_search(level_path: Path, *, max_depth: int = 6) -> list[list[str
 __all__ = [
     "generate_tactic_candidates",
     "depth_first_search",
+    "SearchGraph",
+    "SearchNode",
 ]

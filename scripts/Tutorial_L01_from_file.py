@@ -1,5 +1,6 @@
 """Recreates the Tutorial level using the higher-level level loader."""
 
+import os
 from pathlib import Path
 
 from lean_interact import Command, ProofStep
@@ -7,7 +8,7 @@ from lean_interact import Command, ProofStep
 from llean.levels import load_level_from_file
 from llean.utils import pprint
 
-level_path = Path("../NNG4/Game/Levels/Tutorial/L01rfl.lean")
+level_path = Path(os.environ["NNG_PATH"]) / "Game/Levels/Tutorial/L01rfl.lean"
 
 context = load_level_from_file(level_path, verbose=True)
 

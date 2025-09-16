@@ -23,6 +23,10 @@ class LevelMetadata:
     namespace: str | None
     signature: str
     statement_name: str | None = None
+    new_tactics: list[str] | None = None
+    hidden_tactics: list[str] | None = None
+    world: str | None = None
+    level: str | None = None
 
 
 def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
@@ -47,6 +51,11 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
     namespace_match = re.search(r"^\s*namespace\s+([A-Za-z0-9_'.]+)", contents, re.MULTILINE)
     namespace = namespace_match.group(1) if namespace_match else None
 
+    world_match = re.search(r'^\s*World\s+"([^"]+)"', contents, re.MULTILINE)
+    world = world_match.group(1) if world_match else None
+    level_match = re.search(r"^\s*Level\s+([^\n]+)", contents, re.MULTILINE)
+    level = level_match.group(1).strip() if level_match else None
+
     statement_match = re.search(r"^\s*Statement\b", contents, re.MULTILINE)
     if not statement_match:
         raise ValueError(f"Level file '{path}' does not contain a Statement block")
@@ -70,11 +79,31 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
         signature_body = trimmed
 
     signature = " ".join(signature_body.split())
+
+    def _extract_tactics(directive: str) -> list[str]:
+        pattern = rf"^\s*{directive}[^\S\n]*([^\n]*)"
+        tactics: list[str] = []
+        for match in re.finditer(pattern, contents, re.MULTILINE):
+            remainder = match.group(1)
+            if remainder is None:
+                continue
+            cleaned = remainder.split("--", 1)[0].strip()
+            if not cleaned:
+                continue
+            tactics.extend(cleaned.split())
+        return tactics
+
+    new_tactics = _extract_tactics("NewTactic")
+    hidden_tactics = _extract_tactics("NewHiddenTactic")
     return LevelMetadata(
         module=module,
         namespace=namespace,
         signature=signature,
         statement_name=statement_name,
+        new_tactics=new_tactics or None,
+        hidden_tactics=hidden_tactics or None,
+        world=world,
+        level=level,
     )
 
 

@@ -208,3 +208,7 @@ __marimo__/
 
 # Lean stuff
 NNG4.lock
+
+# LLM stuff
+prompts/tmp*.md
+

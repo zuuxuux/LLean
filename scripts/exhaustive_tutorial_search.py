@@ -14,7 +14,7 @@ def main() -> None:
     for level_path in levels:
         print(f"Level: {level_path.name}")
         trace = SearchGraph()
-        solutions = depth_first_search(level_path, max_depth=20, trace=trace)
+        solutions = depth_first_search(level_path, max_depth=10, trace=trace)
         summary.append((level_path.name, len(solutions)))
         if not solutions:
             print("  No solution found within depth limit")
@@ -22,17 +22,29 @@ def main() -> None:
             if root is not None:
                 root_node = trace.nodes.get(root)
                 if root_node:
-                    tried = ", ".join(root_node.tactics_tried) if root_node.tactics_tried else "-"
+                    tried = (
+                        ", ".join(root_node.tactics_tried)
+                        if root_node.tactics_tried
+                        else "-"
+                    )
                     print(f"  Tactics attempted at root: {tried}")
-                    failed_only = [t for t in root_node.failures if t not in {tac for tac, _ in root_node.successes}]
+                    failed_only = [
+                        t
+                        for t in root_node.failures
+                        if t not in {tac for tac, _ in root_node.successes}
+                    ]
                     if failed_only:
                         print(f"  Failed tactics: {', '.join(failed_only)}")
-            stuck_nodes = [n for n in trace.nodes.values() if n.goals and not n.successes]
+            stuck_nodes = [
+                n for n in trace.nodes.values() if n.goals and not n.successes
+            ]
             if stuck_nodes:
                 sample = stuck_nodes[:3]
                 print("  Sample stuck goals:")
                 for info in sample:
-                    goal_preview = info.goals[0].split("\n", 1)[0] if info.goals else "<completed>"
+                    goal_preview = (
+                        info.goals[0].split("\n", 1)[0] if info.goals else "<completed>"
+                    )
                     tried = ", ".join(info.tactics_tried) if info.tactics_tried else "-"
                     print(f"    depth {info.depth}: {goal_preview} | tried: {tried}")
             continue

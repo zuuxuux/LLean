@@ -85,6 +85,7 @@ class LevelMetadata:
     world: str | None = None
     level: str | None = None
     tactic_docs: dict[str, str] | None = None
+    new_theorems: list[str] | None = None
 
 
 def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
@@ -163,6 +164,14 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
         summary = _summarize_docstring(raw_doc)
         if summary:
             tactic_docs.setdefault(name, summary)
+    new_theorems: list[str] = []
+    for match in re.finditer(r"^\s*NewTheorem\s+([^\n]+)", contents, re.MULTILINE):
+        names = match.group(1).split("--", 1)[0]
+        for name in names.split():
+            stripped = name.strip()
+            if stripped:
+                new_theorems.append(stripped)
+
     return LevelMetadata(
         module=module,
         namespace=namespace,
@@ -173,6 +182,7 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
         world=world,
         level=level,
         tactic_docs=tactic_docs or None,
+        new_theorems=new_theorems or None,
     )
 
 

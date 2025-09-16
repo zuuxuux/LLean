@@ -85,24 +85,32 @@ def _parse_goal(goal: str) -> tuple[list[str], list[str]]:
     return eqs, induct
 
 
-def generate_tactic_candidates(goal: str, available_tactics: Iterable[str]) -> list[str]:
+def generate_tactic_candidates(
+    goal: str, available_tactics: Iterable[str], lemmas: Iterable[str]
+) -> list[str]:
     """Construct tactic invocations for the given goal and available tactics."""
 
     available = set(available_tactics)
     eqs, induct_targets = _parse_goal(goal)
+    lemma_list = [lemma for lemma in lemmas if lemma]
+
+    rewrite_names: list[str] = []
+    for name in eqs + lemma_list:
+        if name not in rewrite_names:
+            rewrite_names.append(name)
 
     candidates: list[str] = []
     if "rfl" in available:
         candidates.append("rfl")
 
     if "rw" in available:
-        for name in eqs:
+        for name in rewrite_names:
             candidates.append(f"rw [{name}]")
             candidates.append(f"rw [← {name}]")
 
     if "nth_rewrite" in available:
         for position in range(1, 4):
-            for name in eqs:
+            for name in rewrite_names:
                 candidates.append(f"nth_rewrite {position} [{name}]")
                 candidates.append(f"nth_rewrite {position} [← {name}]")
 
@@ -124,6 +132,7 @@ def depth_first_search(
     level_path = level_path.resolve()
     context = load_level_from_file(level_path, verbose=False)
     available = [tactic.name for tactic in context.tactics]
+    rewrite_lemmas = context.lemmas
 
     try:
         root = context.server.run(ProofStep(tactic="skip", proofState=0))
@@ -157,7 +166,7 @@ def depth_first_search(
                 continue
             best_depth[goal_str] = len(sequence)
 
-            candidates = generate_tactic_candidates(goal_str, available)
+            candidates = generate_tactic_candidates(goal_str, available, rewrite_lemmas)
             for tactic in reversed(candidates):
                 edge_key = (state_id, tactic)
                 if edge_key in explored_edges:

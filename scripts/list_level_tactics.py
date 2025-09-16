@@ -1,6 +1,7 @@
 """Report the tactics introduced in each Natural Number Game level."""
 
 import os
+import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Iterable
@@ -36,16 +37,33 @@ def accumulate_unique(existing: list[str], candidates: Iterable[str]) -> list[st
 def main() -> None:
     nng_path = Path(os.environ["NNG_PATH"]).expanduser().resolve()
     levels_dir = nng_path / "Game" / "Levels"
+    game_file = nng_path / "Game.lean"
 
     by_world: dict[str, list[tuple[Path, LevelMetadata]]] = defaultdict(list)
     for path, metadata in iter_level_files(levels_dir):
         world = metadata.world or "Unknown"
         by_world[world].append((path, metadata))
 
-    for world in sorted(by_world):
+    world_order: list[str] = []
+    if game_file.is_file():
+        import_pattern = re.compile(r"^\s*import\s+Game\.Levels\.([A-Za-z0-9_]+)")
+        for line in game_file.read_text(encoding="utf-8").splitlines():
+            match = import_pattern.match(line)
+            if match:
+                world_order.append(match.group(1))
+
+    remaining_worlds = set(by_world)
+
+    global_available: list[str] = []
+    global_hidden: list[str] = []
+
+    ordered_worlds = [w for w in world_order if w in by_world]
+    ordered_worlds.extend(sorted(remaining_worlds - set(world_order), key=str.casefold))
+
+    for world in ordered_worlds:
         print(f"World: {world}")
-        available: list[str] = []
-        hidden_available: list[str] = []
+        available: list[str] = global_available.copy()
+        hidden_available: list[str] = global_hidden.copy()
 
         for path, metadata in sorted(by_world[world], key=lambda item: level_sort_key(item[1])):
             rel_path = path.relative_to(nng_path)
@@ -68,6 +86,9 @@ def main() -> None:
                     f"    Hidden available: {', '.join(hidden_available)}"
                 )
         print()
+
+        global_available = available
+        global_hidden = hidden_available
 
 
 if __name__ == "__main__":

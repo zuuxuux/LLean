@@ -1,0 +1,6 @@
+[submodule "NNG4"]
+	path = NNG4
+	url = https://github.com/leanprover-community/NNG4.git
+[submodule "/home/tom/code/LLean/NNG4"]
+	path = /home/tom/code/LLean/NNG4
+	url = https://github.com/leanprover-community/NNG4.git

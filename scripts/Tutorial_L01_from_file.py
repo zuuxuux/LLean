@@ -1,17 +1,19 @@
-"""Recreates the Tutorial level using metadata parsed from the original Lean file."""
+"""Recreates the Tutorial level using the higher-level level loader."""
 
-import os
 from pathlib import Path
 
 from lean_interact import Command, ProofStep
 
-from llean.utils import get_problem_server_from_file, pprint
+from llean.levels import load_level_from_file
+from llean.utils import pprint
 
-level_path = Path(os.environ["NNG_PATH"]) / "Game/Levels/Tutorial/L01rfl.lean"
+level_path = Path("../NNG4/Game/Levels/Tutorial/L01rfl.lean")
 
-server = get_problem_server_from_file(level_path, verbose=True)
+context = load_level_from_file(level_path, verbose=True)
 
-output = server.run(Command(cmd="#help tactic"))
-pprint(output)
-output = server.run(ProofStep(tactic="rfl", proofState=0))
+print("Available tactics:")
+for tactic in context.tactics:
+    print(f"  {tactic.name}: {tactic.usage}")
+
+output = context.server.run(ProofStep(tactic="rfl", proofState=0))
 pprint(output)

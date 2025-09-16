@@ -15,6 +15,39 @@ if "NNG_PATH" not in os.environ:
     raise EnvironmentError("NNG_PATH not set in environment variables")
 
 
+def _summarize_docstring(doc: str) -> str:
+    """Extract a short usage string from a Lean doc comment."""
+
+    doc = doc.strip()
+    if not doc:
+        return ""
+
+    lines = [line.strip() for line in doc.splitlines()]
+
+    summary_lines: list[str] = []
+    collecting = False
+    for line in lines:
+        if line.lower().startswith("## summary"):
+            collecting = True
+            continue
+        if collecting and line.startswith("## "):
+            break
+        if collecting:
+            summary_lines.append(line)
+
+    summary = " ".join(filter(None, (line.strip() for line in summary_lines)))
+    if summary:
+        return summary
+
+    paragraphs = doc.split("\n\n")
+    for paragraph in paragraphs:
+        text = " ".join(paragraph.split())
+        if text:
+            return text
+
+    return " ".join(lines)
+
+
 @dataclass
 class LevelMetadata:
     """Metadata extracted from a Natural Number Game level file."""
@@ -27,6 +60,7 @@ class LevelMetadata:
     hidden_tactics: list[str] | None = None
     world: str | None = None
     level: str | None = None
+    tactic_docs: dict[str, str] | None = None
 
 
 def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
@@ -95,6 +129,16 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
 
     new_tactics = _extract_tactics("NewTactic")
     hidden_tactics = _extract_tactics("NewHiddenTactic")
+
+    tactic_docs: dict[str, str] = {}
+    for match in re.finditer(
+        r"/--(?P<doc>.*?)-/\s*TacticDoc\s+(?P<name>[^\s]+)", contents, re.DOTALL
+    ):
+        name = match.group("name")
+        raw_doc = match.group("doc")
+        summary = _summarize_docstring(raw_doc)
+        if summary:
+            tactic_docs.setdefault(name, summary)
     return LevelMetadata(
         module=module,
         namespace=namespace,
@@ -104,6 +148,7 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
         hidden_tactics=hidden_tactics or None,
         world=world,
         level=level,
+        tactic_docs=tactic_docs or None,
     )
 
 

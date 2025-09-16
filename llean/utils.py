@@ -1,5 +1,8 @@
 import os
+import re
+from dataclasses import dataclass
 from functools import singledispatch
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -10,6 +13,93 @@ if not load_dotenv():
     print("No .env file found")
 if "NNG_PATH" not in os.environ:
     raise EnvironmentError("NNG_PATH not set in environment variables")
+
+
+@dataclass
+class LevelMetadata:
+    """Metadata extracted from a Natural Number Game level file."""
+
+    module: str
+    namespace: str | None
+    signature: str
+    statement_name: str | None = None
+
+
+def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
+    """Parse a Natural Number Game level file and extract metadata needed to load it."""
+
+    nng_path = Path(os.environ["NNG_PATH"]).expanduser().resolve()
+    path = Path(level_path).expanduser().resolve()
+
+    if not path.is_file():
+        raise FileNotFoundError(f"Level file '{path}' does not exist")
+
+    try:
+        relative = path.relative_to(nng_path)
+    except ValueError as exc:
+        raise ValueError(
+            f"Level file '{path}' is not inside the Natural Number Game directory '{nng_path}'"
+        ) from exc
+
+    module = ".".join(relative.with_suffix("").parts)
+    contents = path.read_text(encoding="utf-8")
+
+    namespace_match = re.search(r"^\s*namespace\s+([A-Za-z0-9_'.]+)", contents, re.MULTILINE)
+    namespace = namespace_match.group(1) if namespace_match else None
+
+    statement_match = re.search(r"^\s*Statement\b", contents, re.MULTILINE)
+    if not statement_match:
+        raise ValueError(f"Level file '{path}' does not contain a Statement block")
+
+    after_statement = contents[statement_match.end() :]
+    try:
+        signature_block, _ = after_statement.split(":=", 1)
+    except ValueError as exc:
+        raise ValueError(f"Unable to find ':=' after Statement in '{path}'") from exc
+
+    trimmed = signature_block.strip()
+    if not trimmed:
+        raise ValueError(f"Empty Statement signature in '{path}'")
+
+    statement_name = None
+    name_match = re.match(r"([A-Za-z0-9_']+)\s+(.*)", trimmed, re.DOTALL)
+    if name_match and not trimmed.startswith(("(", "{")):
+        statement_name = name_match.group(1)
+        signature_body = name_match.group(2)
+    else:
+        signature_body = trimmed
+
+    signature = " ".join(signature_body.split())
+    return LevelMetadata(
+        module=module,
+        namespace=namespace,
+        signature=signature,
+        statement_name=statement_name,
+    )
+
+
+def get_problem_server_from_file(
+    level_path: str | os.PathLike[str], *, verbose: bool = False
+) -> LeanServer:
+    """Start a Lean server configured to work on the goal extracted from a level file."""
+
+    metadata = parse_level_file(level_path)
+    code_lines: list[str] = [f"import {metadata.module}", ""]
+    if metadata.namespace:
+        code_lines.extend([f"open {metadata.namespace}", ""])
+    code_lines.extend(
+        [
+            f"theorem ex {metadata.signature} := by",
+            "    sorry",
+        ]
+    )
+
+    config = get_nng_config()
+    server = LeanServer(config)
+    output = server.run(Command(cmd="\n".join(code_lines)))
+    if verbose:
+        pprint(output)
+    return server
 
 
 def get_problem_server(theorem: str, level: str, *, verbose=False) -> LeanServer:

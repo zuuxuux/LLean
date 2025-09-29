@@ -165,12 +165,19 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
         if summary:
             tactic_docs.setdefault(name, summary)
     new_theorems: list[str] = []
-    for match in re.finditer(r"^\s*NewTheorem\s+([^\n]+)", contents, re.MULTILINE):
-        names = match.group(1).split("--", 1)[0]
-        for name in names.split():
-            stripped = name.strip()
-            if stripped:
-                new_theorems.append(stripped)
+    theorem_pattern = re.compile(
+        r"^\s*NewTheorem\s+([^\n]*(?:\n[ \t]+[^\n]*)*)",
+        re.MULTILINE,
+    )
+    for match in theorem_pattern.finditer(contents):
+        block = match.group(1)
+        for line in block.splitlines():
+            cleaned = line.split("--", 1)[0].strip()
+            if not cleaned:
+                continue
+            for name in cleaned.split():
+                if name:
+                    new_theorems.append(name)
 
     return LevelMetadata(
         module=module,

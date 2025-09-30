@@ -212,3 +212,5 @@ NNG4.lock
 # LLM stuff
 prompts/tmp*.md
 
+# general stuff
+artefacts/

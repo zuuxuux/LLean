@@ -146,7 +146,7 @@ def depth_first_search(
 
         solutions: list[list[str]] = []
         stack: list[tuple[str, list[str]]] = [(root_state, [])]
-        best_depth: dict[str, int] = {}
+        state_depth: dict[str, int] = {root_state: 0}
         explored_edges: set[tuple[str, str]] = set()
 
         while stack:
@@ -159,15 +159,19 @@ def depth_first_search(
                 solutions.append(sequence)
                 if trace is not None:
                     trace.solutions.append(sequence)
-                continue
+                return solutions
 
             goal_str = goals[0]
-            if goal_str in best_depth and best_depth[goal_str] <= len(sequence):
+
+            recorded_depth = state_depth.get(state_id)
+            if recorded_depth is not None and recorded_depth < len(sequence):
                 continue
-            best_depth[goal_str] = len(sequence)
+            if recorded_depth is None or recorded_depth > len(sequence):
+                state_depth[state_id] = len(sequence)
 
             candidates = generate_tactic_candidates(goal_str, available, rewrite_lemmas)
-            for tactic in reversed(candidates):
+            children: list[tuple[str, list[str]]] = []
+            for tactic in candidates:
                 edge_key = (state_id, tactic)
                 if edge_key in explored_edges:
                     continue
@@ -184,7 +188,15 @@ def depth_first_search(
                 if trace is not None:
                     trace.record_attempt(state_id, tactic, success=True, new_state=new_state)
                     trace.record_node(new_state, state_goals[new_state], len(sequence) + 1)
-                stack.append((new_state, sequence + [tactic]))
+                new_depth = len(sequence) + 1
+                recorded_child = state_depth.get(new_state)
+                if recorded_child is not None and recorded_child <= new_depth:
+                    continue
+                state_depth[new_state] = new_depth
+                children.append((new_state, sequence + [tactic]))
+
+            for child in reversed(children):
+                stack.append(child)
 
         return solutions
     finally:

@@ -7,9 +7,11 @@ requires-python = "~=3.12"
 dependencies = [
     "lean-interact>=0.8.2",
     "python-dotenv>=1.1.1",
+    "pydantic>=2.7.0",
 ]
 
 [dependency-groups]
 dev = [
     "ipython>=9.4.0",
+    "pytest>=8.2.0",
 ]

@@ -192,22 +192,19 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
 
         proof_start = statement_match_local.end() + by_match.end()
         proof_body = contents[proof_start:]
+        lines = proof_body.splitlines()
 
-        terminator_pattern = re.compile(
-            r"^(?P<indent>[ \t]*)(?P<keyword>Conclusion|Statement|World|Title|Introduction|TheoremTab|Lemma|Definition|Example|NewTactic|NewHiddenTactic|NewTheorem|TacticDoc|namespace|section|end)\b",
-            re.MULTILINE,
-        )
+        solution_lines: list[str] = []
+        for line in lines:
+            if not line.strip():
+                solution_lines.append(line)
+                continue
+            if line[0].isspace():
+                solution_lines.append(line)
+                continue
+            break
 
-        solution_end = None
-        for match in terminator_pattern.finditer(proof_body):
-            if not match.group("indent"):
-                solution_end = match.start()
-                break
-
-        if solution_end is not None:
-            proof_body = proof_body[:solution_end]
-
-        solution_text = proof_body.lstrip("\n").rstrip()
+        solution_text = "\n".join(solution_lines).rstrip()
         return solution_text or None
 
     solution = _extract_solution_block()

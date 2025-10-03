@@ -5,6 +5,7 @@ import pytest
 from llean.tactic_models import (
     ApplyTactic,
     NthRewriteTactic,
+    RflTactic,
     RewriteTactic,
     TacticModel,
     TacticParseError,
@@ -21,6 +22,7 @@ from llean.tactic_models import (
         ("apply f", ApplyTactic),
         ("nth_rewrite 2 [two_eq_succ_one]", NthRewriteTactic),
         ("nth_rewrite 2 [← zero_add y] at h", NthRewriteTactic),
+        ("rfl", RflTactic),
     ],
 )
 def test_model_round_trip(command: str, expected_type) -> None:

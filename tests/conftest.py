@@ -41,4 +41,7 @@ def tactic_samples() -> Dict[str, List[str]]:
             "nth_rewrite 2 [two_eq_succ_one]",
             "nth_rewrite 2 [← zero_add y] at h",
         ],
+        "rfl": [
+            "rfl",
+        ],
     }

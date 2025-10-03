@@ -173,6 +173,22 @@ class ApplyTactic(TacticModel):
         return cls(expression=expression, location=location.strip() if location else None)
 
 
+class RflTactic(TacticModel):
+    """Representation of the `rfl` tactic."""
+
+    tactic: ClassVar[str] = "rfl"
+
+    def to_string(self) -> str:
+        return "rfl"
+
+    @classmethod
+    def from_string(cls, command: str) -> RflTactic:
+        cleaned = _strip_inline_comment(command).strip()
+        if cleaned != "rfl":
+            raise TacticParseError(f"Unable to parse rfl command: '{command}'")
+        return cls()
+
+
 class NthRewriteTactic(TacticModel):
     """Representation of the `nth_rewrite` tactic."""
 
@@ -219,6 +235,7 @@ TacticType = TypeVar("TacticType", bound=TacticModel)
 TACTIC_REGISTRY: dict[str, Type[TacticModel]] = {
     RewriteTactic.tactic: RewriteTactic,
     ApplyTactic.tactic: ApplyTactic,
+    RflTactic.tactic: RflTactic,
     NthRewriteTactic.tactic: NthRewriteTactic,
 }
 

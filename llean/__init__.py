@@ -7,6 +7,7 @@ __all__ = [
     "ApplyTactic",
     "LevelContext",
     "NthRewriteTactic",
+    "RflTactic",
     "RewriteRule",
     "RewriteTactic",
     "Tactic",
@@ -22,6 +23,7 @@ _LAZY_IMPORTS = {
     "load_level_from_file": ("levels", "load_level_from_file"),
     "ApplyTactic": ("tactic_models", "ApplyTactic"),
     "NthRewriteTactic": ("tactic_models", "NthRewriteTactic"),
+    "RflTactic": ("tactic_models", "RflTactic"),
     "RewriteRule": ("tactic_models", "RewriteRule"),
     "RewriteTactic": ("tactic_models", "RewriteTactic"),
     "TacticModel": ("tactic_models", "TacticModel"),
@@ -34,6 +36,7 @@ if TYPE_CHECKING:  # pragma: no cover - import side effects for type checkers on
     from .tactic_models import (
         ApplyTactic,
         NthRewriteTactic,
+        RflTactic,
         RewriteRule,
         RewriteTactic,
         TacticModel,

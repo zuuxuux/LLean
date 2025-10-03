@@ -10,6 +10,7 @@ from typing import Iterable
 from llean import (
     ApplyTactic,
     NthRewriteTactic,
+    RflTactic,
     RewriteRule,
     RewriteTactic,
     load_level_from_file,
@@ -91,6 +92,10 @@ def main() -> None:
         for schema in build_nth_rewrite_schemas(lemmas):
             schema_records.append({"tactic": "nth_rewrite", **schema.model_dump()})
             rendered_commands.append(schema.to_string())
+
+    if "rfl" in tactic_names:
+        schema_records.append({"tactic": "rfl", **RflTactic().model_dump()})
+        rendered_commands.append(RflTactic().to_string())
 
     print("Tactic schemas:")
     if schema_records:

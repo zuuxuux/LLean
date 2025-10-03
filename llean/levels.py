@@ -28,6 +28,7 @@ class LevelContext:
     server: LeanServer
     tactics: List[Tactic]
     lemmas: List[str]
+    solutions: List[str]
 
 
 def _accumulate_unique(existing: list[str], candidates: Iterable[str]) -> list[str]:
@@ -104,6 +105,7 @@ def load_level_from_file(level_path: str | os.PathLike[str], *, verbose: bool = 
     available: list[str] = []
     hidden: list[str] = []
     lemmas: list[str] = []
+    solutions: list[str] = []
     docs: dict[str, str] = {}
     target_metadata: LevelMetadata | None = None
 
@@ -125,6 +127,8 @@ def load_level_from_file(level_path: str | os.PathLike[str], *, verbose: bool = 
                         short = name.split(".")[-1]
                         if short:
                             _accumulate_unique(lemmas, [short])
+            if meta.solution:
+                solutions.append(meta.solution)
             if path == target_path:
                 target_metadata = meta
                 found = True
@@ -149,7 +153,7 @@ def load_level_from_file(level_path: str | os.PathLike[str], *, verbose: bool = 
         tactics.append(Tactic(name=name, usage=usage))
 
     server = get_problem_server_from_file(target_path, verbose=verbose)
-    return LevelContext(server=server, tactics=tactics, lemmas=lemmas)
+    return LevelContext(server=server, tactics=tactics, lemmas=lemmas, solutions=solutions)
 
 
 __all__ = ["Tactic", "LevelContext", "load_level_from_file"]

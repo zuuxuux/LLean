@@ -86,6 +86,7 @@ class LevelMetadata:
     level: str | None = None
     tactic_docs: dict[str, str] | None = None
     new_theorems: list[str] | None = None
+    solution: str | None = None
 
 
 def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
@@ -179,6 +180,38 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
                 if name:
                     new_theorems.append(name)
 
+    def _extract_solution_block() -> str | None:
+        statement_match_local = re.search(r"^\s*Statement\b", contents, re.MULTILINE)
+        if not statement_match_local:
+            return None
+
+        after_statement = contents[statement_match_local.end() :]
+        by_match = re.search(r":=\s*by\b", after_statement)
+        if not by_match:
+            return None
+
+        proof_start = statement_match_local.end() + by_match.end()
+        proof_body = contents[proof_start:]
+
+        terminator_pattern = re.compile(
+            r"^(?P<indent>[ \t]*)(?P<keyword>Conclusion|Statement|World|Title|Introduction|TheoremTab|Lemma|Definition|Example|NewTactic|NewHiddenTactic|NewTheorem|TacticDoc|namespace|section|end)\b",
+            re.MULTILINE,
+        )
+
+        solution_end = None
+        for match in terminator_pattern.finditer(proof_body):
+            if not match.group("indent"):
+                solution_end = match.start()
+                break
+
+        if solution_end is not None:
+            proof_body = proof_body[:solution_end]
+
+        solution_text = proof_body.lstrip("\n").rstrip()
+        return solution_text or None
+
+    solution = _extract_solution_block()
+
     return LevelMetadata(
         module=module,
         namespace=namespace,
@@ -190,6 +223,7 @@ def parse_level_file(level_path: str | os.PathLike[str]) -> LevelMetadata:
         level=level,
         tactic_docs=tactic_docs or None,
         new_theorems=new_theorems or None,
+        solution=solution,
     )
 
 
